@@ -14,6 +14,10 @@ if [ -f "$HOME/.sprite-mobile/.env" ]; then
     chmod 600 "$HOME/.sprite-mobile/.env"
 fi
 
+# Work directory configuration (mirrors claude-hub's config)
+export CLAUDE_WORK_DIR="${CLAUDE_WORK_DIR:-$HOME}"
+export CLAUDE_PROJECTS_DIR="${CLAUDE_PROJECTS_DIR:-}"  # Computed from CLAUDE_WORK_DIR if empty
+
 # Enable Go hub for multi-client sync
 export USE_GO_HUB=true
 

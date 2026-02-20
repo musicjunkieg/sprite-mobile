@@ -11,6 +11,7 @@ import {
 import type { StoredMessage } from "../lib/types";
 import { backgroundProcesses, trySend } from "../lib/claude";
 import { discoverSprites, getSpriteStatus, getNetworkInfo, getHostname, updateHeartbeat, deleteSprite } from "../lib/network";
+import { HOME_DIR, WORK_DIR, CLAUDE_PROJECTS_DIR } from "../lib/config";
 import * as distributedTasks from "./distributed-tasks";
 import { allClients } from "./websocket";
 
@@ -95,7 +96,7 @@ export function handleApi(req: Request, url: URL): Response | Promise<Response> 
     return (async () => {
       const body = await req.json().catch(() => ({}));
       const sessions = loadSessions();
-      const cwd = body.cwd || process.env.HOME || "/home/sprite";
+      const cwd = body.cwd || WORK_DIR;
       const newSession: ChatSession = {
         id: generateId(),
         name: body.name || `Chat ${sessions.length + 1}`,
@@ -134,18 +135,25 @@ export function handleApi(req: Request, url: URL): Response | Promise<Response> 
     return (async () => {
       const id = path.split("/")[3];
 
-      // Find Claude session file by scanning all cwd directories
+      // Find Claude session file - check configured projects dir first, then scan all cwd directories
       // Claude's files are the source of truth - no need for sprite-mobile metadata
       let claudeSessionFile: string | null = null;
-      const claudeProjectsDir = join(process.env.HOME || "/home/sprite", ".claude", "projects");
 
-      if (existsSync(claudeProjectsDir)) {
-        const cwdDirs = readdirSync(claudeProjectsDir);
-        for (const cwdDir of cwdDirs) {
-          const candidateFile = join(claudeProjectsDir, cwdDir, `${id}.jsonl`);
-          if (existsSync(candidateFile)) {
-            claudeSessionFile = candidateFile;
-            break;
+      // Check the configured CLAUDE_PROJECTS_DIR first (most common case)
+      const primaryCandidate = join(CLAUDE_PROJECTS_DIR, `${id}.jsonl`);
+      if (existsSync(primaryCandidate)) {
+        claudeSessionFile = primaryCandidate;
+      } else {
+        // Fall back to scanning all cwd subdirectories under ~/.claude/projects/
+        const allProjectsDir = join(HOME_DIR, ".claude", "projects");
+        if (existsSync(allProjectsDir)) {
+          const cwdDirs = readdirSync(allProjectsDir);
+          for (const cwdDir of cwdDirs) {
+            const candidateFile = join(allProjectsDir, cwdDir, `${id}.jsonl`);
+            if (existsSync(candidateFile)) {
+              claudeSessionFile = candidateFile;
+              break;
+            }
           }
         }
       }
@@ -264,8 +272,8 @@ export function handleApi(req: Request, url: URL): Response | Promise<Response> 
       }
 
       // Rename messages file if it exists
-      const oldMessagesFile = join(process.env.HOME || "/home/sprite", ".sprite-mobile/data", `${oldId}.json`);
-      const newMessagesFile = join(process.env.HOME || "/home/sprite", ".sprite-mobile/data", `${newId}.json`);
+      const oldMessagesFile = join(HOME_DIR, ".sprite-mobile/data", `${oldId}.json`);
+      const newMessagesFile = join(HOME_DIR, ".sprite-mobile/data", `${newId}.json`);
       try {
         if (existsSync(oldMessagesFile)) {
           const fs = await import("fs");
@@ -309,7 +317,7 @@ export function handleApi(req: Request, url: URL): Response | Promise<Response> 
         const newSession = {
           id,
           name: role === 'user' ? preview : "New Chat",
-          cwd: process.env.HOME || "/home/sprite",
+          cwd: WORK_DIR,
           createdAt: Date.now(),
           lastMessageAt: Date.now(),
           lastMessage: preview,
@@ -744,8 +752,8 @@ export function handleApi(req: Request, url: URL): Response | Promise<Response> 
         }
 
         // Start keepalive as background process
-        const scriptPath = join(process.env.HOME || "/home/sprite", ".sprite-mobile/scripts/session-keepalive.sh");
-        const logPath = join(process.env.HOME || "/home/sprite", ".sprite-mobile/data/keepalive.log");
+        const scriptPath = join(HOME_DIR, ".sprite-mobile/scripts/session-keepalive.sh");
+        const logPath = join(HOME_DIR, ".sprite-mobile/data/keepalive.log");
 
         spawn(["bash", scriptPath], {
           stdout: "pipe",

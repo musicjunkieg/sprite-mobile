@@ -224,6 +224,10 @@ export_config() {
   "tailscale": {
     "auth_key": "$tailscale_auth_key"
   },
+  "claude": {
+    "work_dir": "${CLAUDE_WORK_DIR:-}",
+    "projects_dir": "${CLAUDE_PROJECTS_DIR:-}"
+  },
   "ports": {
     "app": $APP_PORT,
     "wakeup": $WAKEUP_PORT
@@ -315,6 +319,14 @@ parse_pasted_config() {
                     export SPRITE_API_TOKEN="$value"
                     echo "  SPRITE_API_TOKEN: [set]"
                     ;;
+                CLAUDE_WORK_DIR)
+                    export CLAUDE_WORK_DIR="$value"
+                    echo "  CLAUDE_WORK_DIR: $value"
+                    ;;
+                CLAUDE_PROJECTS_DIR)
+                    export CLAUDE_PROJECTS_DIR="$value"
+                    echo "  CLAUDE_PROJECTS_DIR: $value"
+                    ;;
                 *)
                     # Unknown key, export anyway
                     export "$key"="$value"
@@ -350,6 +362,14 @@ EOF
     [ -n "$TAILSCALE_AUTH_KEY" ] && echo "TAILSCALE_AUTH_KEY=$TAILSCALE_AUTH_KEY" >> "$SPRITE_CONFIG_FILE"
     [ -n "$FLY_API_TOKEN" ] && echo "FLY_API_TOKEN=$FLY_API_TOKEN" >> "$SPRITE_CONFIG_FILE"
     [ -n "$SPRITE_API_TOKEN" ] && echo "SPRITE_API_TOKEN=$SPRITE_API_TOKEN" >> "$SPRITE_CONFIG_FILE"
+
+    # Claude work directory configuration
+    if [ -n "$CLAUDE_WORK_DIR" ]; then
+        echo "" >> "$SPRITE_CONFIG_FILE"
+        echo "# Claude work directory" >> "$SPRITE_CONFIG_FILE"
+        echo "CLAUDE_WORK_DIR=$CLAUDE_WORK_DIR" >> "$SPRITE_CONFIG_FILE"
+        [ -n "$CLAUDE_PROJECTS_DIR" ] && echo "CLAUDE_PROJECTS_DIR=$CLAUDE_PROJECTS_DIR" >> "$SPRITE_CONFIG_FILE"
+    fi
 
     # Sprite network credentials
     if [ -n "$SPRITE_NETWORK_S3_BUCKET" ]; then
@@ -444,10 +464,16 @@ load_config() {
     local cfg_git_email=$(json_get_nested "$config" "git" "user_email")
     local cfg_tailscale_key=$(json_get_nested "$config" "tailscale" "auth_key")
 
+    # Load Claude work directory config
+    local cfg_claude_work_dir=$(json_get_nested "$config" "claude" "work_dir")
+    local cfg_claude_projects_dir=$(json_get_nested "$config" "claude" "projects_dir")
+
     # Set global variables (hostname/public_url not set - unique per sprite)
     [ -n "$cfg_git_name" ] && GIT_USER_NAME="$cfg_git_name"
     [ -n "$cfg_git_email" ] && GIT_USER_EMAIL="$cfg_git_email"
     [ -n "$cfg_tailscale_key" ] && TAILSCALE_AUTH_KEY="$cfg_tailscale_key"
+    [ -n "$cfg_claude_work_dir" ] && export CLAUDE_WORK_DIR="$cfg_claude_work_dir"
+    [ -n "$cfg_claude_projects_dir" ] && export CLAUDE_PROJECTS_DIR="$cfg_claude_projects_dir"
 
     # Extract and install credentials
     local claude_creds=$(json_get_nested "$config" "credentials" "claude")
@@ -1902,6 +1928,8 @@ show_help() {
     echo "  TAILSCALE_AUTH_KEY       Tailscale reusable auth key"
     echo "  FLY_API_TOKEN            Fly.io API token (from 'flyctl auth token')"
     echo "  SPRITE_API_TOKEN         Sprite CLI API token (optional)"
+    echo "  CLAUDE_WORK_DIR          Working directory for Claude processes (default: \$HOME)"
+    echo "  CLAUDE_PROJECTS_DIR      Override for Claude session .jsonl storage location"
     echo ""
     echo "Example with tokens:"
     echo "  GH_TOKEN=ghp_xxx CLAUDE_CODE_OAUTH_TOKEN=xxx $0 3 4"
