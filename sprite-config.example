@@ -5,8 +5,9 @@
 # Git configuration
 GIT_USER_NAME=Your Name
 GIT_USER_EMAIL=you@example.com
-# sprite-mobile repository (optional, defaults to clouvet/sprite-mobile)
+# Repositories (optional, defaults to clouvet org)
 #SPRITE_MOBILE_REPO=https://github.com/your-org/sprite-mobile
+#CLAUDE_HUB_REPO=https://github.com/your-org/claude-hub
 # GitHub Personal Access Token (create at: https://github.com/settings/tokens)
 # Required scopes: repo, read:org, gist
 GH_TOKEN=ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx

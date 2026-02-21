@@ -36,6 +36,11 @@ if [ -z "$SPRITE_MOBILE_REPO" ] && [ -f "$HOME/.zshrc" ]; then
     SPRITE_MOBILE_REPO=$(grep "^export SPRITE_MOBILE_REPO=" "$HOME/.zshrc" 2>/dev/null | sed 's/^export SPRITE_MOBILE_REPO=//' | tail -1)
 fi
 SPRITE_MOBILE_REPO="${SPRITE_MOBILE_REPO:-https://github.com/clouvet/sprite-mobile}"
+# Load saved CLAUDE_HUB_REPO from ~/.zshrc if not already set
+if [ -z "$CLAUDE_HUB_REPO" ] && [ -f "$HOME/.zshrc" ]; then
+    CLAUDE_HUB_REPO=$(grep "^export CLAUDE_HUB_REPO=" "$HOME/.zshrc" 2>/dev/null | sed 's/^export CLAUDE_HUB_REPO=//' | tail -1)
+fi
+CLAUDE_HUB_REPO="${CLAUDE_HUB_REPO:-https://github.com/clouvet/claude-hub}"
 
 # Load saved SPRITE_PUBLIC_URL from ~/.zshrc if not already set
 if [ -z "$SPRITE_PUBLIC_URL" ] && [ -f "$HOME/.zshrc" ]; then
@@ -224,6 +229,10 @@ export_config() {
   "tailscale": {
     "auth_key": "$tailscale_auth_key"
   },
+  "claude": {
+    "work_dir": "${CLAUDE_WORK_DIR:-}",
+    "projects_dir": "${CLAUDE_PROJECTS_DIR:-}"
+  },
   "ports": {
     "app": $APP_PORT,
     "wakeup": $WAKEUP_PORT
@@ -315,6 +324,14 @@ parse_pasted_config() {
                     export SPRITE_API_TOKEN="$value"
                     echo "  SPRITE_API_TOKEN: [set]"
                     ;;
+                CLAUDE_WORK_DIR)
+                    export CLAUDE_WORK_DIR="$value"
+                    echo "  CLAUDE_WORK_DIR: $value"
+                    ;;
+                CLAUDE_PROJECTS_DIR)
+                    export CLAUDE_PROJECTS_DIR="$value"
+                    echo "  CLAUDE_PROJECTS_DIR: $value"
+                    ;;
                 *)
                     # Unknown key, export anyway
                     export "$key"="$value"
@@ -350,6 +367,14 @@ EOF
     [ -n "$TAILSCALE_AUTH_KEY" ] && echo "TAILSCALE_AUTH_KEY=$TAILSCALE_AUTH_KEY" >> "$SPRITE_CONFIG_FILE"
     [ -n "$FLY_API_TOKEN" ] && echo "FLY_API_TOKEN=$FLY_API_TOKEN" >> "$SPRITE_CONFIG_FILE"
     [ -n "$SPRITE_API_TOKEN" ] && echo "SPRITE_API_TOKEN=$SPRITE_API_TOKEN" >> "$SPRITE_CONFIG_FILE"
+
+    # Claude work directory configuration
+    if [ -n "$CLAUDE_WORK_DIR" ] || [ -n "$CLAUDE_PROJECTS_DIR" ]; then
+        echo "" >> "$SPRITE_CONFIG_FILE"
+        echo "# Claude work directory" >> "$SPRITE_CONFIG_FILE"
+        [ -n "$CLAUDE_WORK_DIR" ] && echo "CLAUDE_WORK_DIR=$CLAUDE_WORK_DIR" >> "$SPRITE_CONFIG_FILE"
+        [ -n "$CLAUDE_PROJECTS_DIR" ] && echo "CLAUDE_PROJECTS_DIR=$CLAUDE_PROJECTS_DIR" >> "$SPRITE_CONFIG_FILE"
+    fi
 
     # Sprite network credentials
     if [ -n "$SPRITE_NETWORK_S3_BUCKET" ]; then
@@ -440,17 +465,29 @@ load_config() {
 
     # Load simple values
     # NOTE: hostname and public_url are NOT loaded from config - they are unique per sprite
-    local cfg_git_name=$(json_get_nested "$config" "git" "user_name")
-    local cfg_git_email=$(json_get_nested "$config" "git" "user_email")
-    local cfg_tailscale_key=$(json_get_nested "$config" "tailscale" "auth_key")
+    local cfg_git_name
+    local cfg_git_email
+    local cfg_tailscale_key
+    cfg_git_name=$(json_get_nested "$config" "git" "user_name")
+    cfg_git_email=$(json_get_nested "$config" "git" "user_email")
+    cfg_tailscale_key=$(json_get_nested "$config" "tailscale" "auth_key")
+
+    # Load Claude work directory config
+    local cfg_claude_work_dir
+    local cfg_claude_projects_dir
+    cfg_claude_work_dir=$(json_get_nested "$config" "claude" "work_dir")
+    cfg_claude_projects_dir=$(json_get_nested "$config" "claude" "projects_dir")
 
     # Set global variables (hostname/public_url not set - unique per sprite)
     [ -n "$cfg_git_name" ] && GIT_USER_NAME="$cfg_git_name"
     [ -n "$cfg_git_email" ] && GIT_USER_EMAIL="$cfg_git_email"
     [ -n "$cfg_tailscale_key" ] && TAILSCALE_AUTH_KEY="$cfg_tailscale_key"
+    [ -n "$cfg_claude_work_dir" ] && export CLAUDE_WORK_DIR="$cfg_claude_work_dir"
+    [ -n "$cfg_claude_projects_dir" ] && export CLAUDE_PROJECTS_DIR="$cfg_claude_projects_dir"
 
     # Extract and install credentials
-    local claude_creds=$(json_get_nested "$config" "credentials" "claude")
+    local claude_creds
+    claude_creds=$(json_get_nested "$config" "credentials" "claude")
     if [ -n "$claude_creds" ]; then
         echo "  Installing Claude credentials..." >&2
         mkdir -p "$HOME/.claude"
@@ -458,7 +495,8 @@ load_config() {
         chmod 600 "$HOME/.claude/.credentials.json"
     fi
 
-    local claude_token=$(json_get_nested "$config" "credentials" "claude_token")
+    local claude_token
+    claude_token=$(json_get_nested "$config" "credentials" "claude_token")
     if [ -n "$claude_token" ]; then
         echo "  Installing Claude token..." >&2
         mkdir -p "$HOME/.config/claude-code"
@@ -472,7 +510,8 @@ load_config() {
         fi
     fi
 
-    local github_creds=$(json_get_nested "$config" "credentials" "github")
+    local github_creds
+    github_creds=$(json_get_nested "$config" "credentials" "github")
     if [ -n "$github_creds" ]; then
         echo "  Installing GitHub credentials..." >&2
         mkdir -p "$HOME/.config/gh"
@@ -480,14 +519,16 @@ load_config() {
         chmod 600 "$HOME/.config/gh/hosts.yml"
     fi
 
-    local flyctl_creds=$(json_get_nested "$config" "credentials" "flyctl")
+    local flyctl_creds
+    flyctl_creds=$(json_get_nested "$config" "credentials" "flyctl")
     if [ -n "$flyctl_creds" ]; then
         echo "  Installing flyctl credentials..." >&2
         mkdir -p "$HOME/.fly"
         echo "$flyctl_creds" | base64 -d | tar -xzf - -C "$HOME/.fly" 2>/dev/null || true
     fi
 
-    local sprite_network_creds=$(json_get_nested "$config" "credentials" "sprite_network")
+    local sprite_network_creds
+    sprite_network_creds=$(json_get_nested "$config" "credentials" "sprite_network")
     if [ -n "$sprite_network_creds" ]; then
         echo "  Installing sprite-network credentials..." >&2
         mkdir -p "$HOME/.sprite-network"
@@ -1298,6 +1339,11 @@ step_8_sprite_mobile() {
     # Environment variables are sourced from ~/.sprite-config via start-service.sh
     # No need to write .env file
 
+    # Install sprite-update command
+    chmod +x "$SPRITE_MOBILE_DIR/scripts/sprite-update.sh"
+    ln -sf "$SPRITE_MOBILE_DIR/scripts/sprite-update.sh" /usr/local/bin/sprite-update 2>/dev/null || \
+        sudo ln -sf "$SPRITE_MOBILE_DIR/scripts/sprite-update.sh" /usr/local/bin/sprite-update 2>/dev/null || true
+
     # Check if sprite-mobile service is running
     if sprite_api /v1/services 2>/dev/null | grep -q '"sprite-mobile"'; then
         echo "sprite-mobile service already running, restarting to pick up new environment..."
@@ -1667,7 +1713,6 @@ step_12_claude_hub() {
     echo "=== Step 12: claude-hub Setup ==="
 
     CLAUDE_HUB_DIR="$HOME/.claude-hub"
-    CLAUDE_HUB_REPO="https://github.com/clouvet/claude-hub.git"
 
     if [ -d "$CLAUDE_HUB_DIR/.git" ]; then
         # It's a git repo, pull latest
@@ -1902,6 +1947,8 @@ show_help() {
     echo "  TAILSCALE_AUTH_KEY       Tailscale reusable auth key"
     echo "  FLY_API_TOKEN            Fly.io API token (from 'flyctl auth token')"
     echo "  SPRITE_API_TOKEN         Sprite CLI API token (optional)"
+    echo "  CLAUDE_WORK_DIR          Working directory for Claude processes (default: \$HOME)"
+    echo "  CLAUDE_PROJECTS_DIR      Override for Claude session .jsonl storage location"
     echo ""
     echo "Example with tokens:"
     echo "  GH_TOKEN=ghp_xxx CLAUDE_CODE_OAUTH_TOKEN=xxx $0 3 4"

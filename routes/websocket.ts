@@ -6,6 +6,7 @@ import {
   backgroundProcesses, spawnClaude, generateChatName,
   handleClaudeOutput, handleClaudeStderr
 } from "../lib/claude";
+import { WORK_DIR } from "../lib/config";
 
 // Track all connected clients for broadcast messages (e.g., reload)
 export const allClients = new Set<any>();
@@ -204,7 +205,7 @@ export const websocketHandlers = {
         if (data.type === "user" && (data.content || data.imageId)) {
           console.log(`Spawning new Claude process for session ${sessionId} after interruption`);
           const session = getSession(sessionId);
-          const cwd = session?.cwd || process.env.HOME || "/home/sprite";
+          const cwd = session?.cwd || WORK_DIR;
           const claudeSessionId = session?.claudeSessionId;
 
           const process = spawnClaude(cwd, claudeSessionId);

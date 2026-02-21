@@ -1,6 +1,7 @@
 import { spawn, type Subprocess } from "bun";
 import type { BackgroundProcess } from "./types";
 import { saveMessage, updateSession, saveInProgressMessage, clearInProgressMessage } from "./storage";
+import { WORK_DIR } from "./config";
 
 // Background process tracking - persists across WebSocket reconnects
 export const backgroundProcesses = new Map<string, BackgroundProcess>();
@@ -40,7 +41,7 @@ export function spawnClaude(cwd: string, claudeSessionId?: string): Subprocess {
     stdin: "pipe",
     stdout: "pipe",
     stderr: "pipe",
-    cwd: cwd || process.env.HOME,
+    cwd: cwd || WORK_DIR,
   });
 }
 
