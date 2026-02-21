@@ -36,6 +36,11 @@ if [ -z "$SPRITE_MOBILE_REPO" ] && [ -f "$HOME/.zshrc" ]; then
     SPRITE_MOBILE_REPO=$(grep "^export SPRITE_MOBILE_REPO=" "$HOME/.zshrc" 2>/dev/null | sed 's/^export SPRITE_MOBILE_REPO=//' | tail -1)
 fi
 SPRITE_MOBILE_REPO="${SPRITE_MOBILE_REPO:-https://github.com/clouvet/sprite-mobile}"
+# Load saved CLAUDE_HUB_REPO from ~/.zshrc if not already set
+if [ -z "$CLAUDE_HUB_REPO" ] && [ -f "$HOME/.zshrc" ]; then
+    CLAUDE_HUB_REPO=$(grep "^export CLAUDE_HUB_REPO=" "$HOME/.zshrc" 2>/dev/null | sed 's/^export CLAUDE_HUB_REPO=//' | tail -1)
+fi
+CLAUDE_HUB_REPO="${CLAUDE_HUB_REPO:-https://github.com/clouvet/claude-hub}"
 
 # Load saved SPRITE_PUBLIC_URL from ~/.zshrc if not already set
 if [ -z "$SPRITE_PUBLIC_URL" ] && [ -f "$HOME/.zshrc" ]; then
@@ -1324,6 +1329,11 @@ step_8_sprite_mobile() {
     # Environment variables are sourced from ~/.sprite-config via start-service.sh
     # No need to write .env file
 
+    # Install sprite-update command
+    chmod +x "$SPRITE_MOBILE_DIR/scripts/sprite-update.sh"
+    ln -sf "$SPRITE_MOBILE_DIR/scripts/sprite-update.sh" /usr/local/bin/sprite-update 2>/dev/null || \
+        sudo ln -sf "$SPRITE_MOBILE_DIR/scripts/sprite-update.sh" /usr/local/bin/sprite-update 2>/dev/null || true
+
     # Check if sprite-mobile service is running
     if sprite_api /v1/services 2>/dev/null | grep -q '"sprite-mobile"'; then
         echo "sprite-mobile service already running, restarting to pick up new environment..."
@@ -1693,7 +1703,6 @@ step_12_claude_hub() {
     echo "=== Step 12: claude-hub Setup ==="
 
     CLAUDE_HUB_DIR="$HOME/.claude-hub"
-    CLAUDE_HUB_REPO="https://github.com/clouvet/claude-hub.git"
 
     if [ -d "$CLAUDE_HUB_DIR/.git" ]; then
         # It's a git repo, pull latest
