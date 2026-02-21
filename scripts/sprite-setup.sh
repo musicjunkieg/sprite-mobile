@@ -465,13 +465,18 @@ load_config() {
 
     # Load simple values
     # NOTE: hostname and public_url are NOT loaded from config - they are unique per sprite
-    local cfg_git_name=$(json_get_nested "$config" "git" "user_name")
-    local cfg_git_email=$(json_get_nested "$config" "git" "user_email")
-    local cfg_tailscale_key=$(json_get_nested "$config" "tailscale" "auth_key")
+    local cfg_git_name
+    local cfg_git_email
+    local cfg_tailscale_key
+    cfg_git_name=$(json_get_nested "$config" "git" "user_name")
+    cfg_git_email=$(json_get_nested "$config" "git" "user_email")
+    cfg_tailscale_key=$(json_get_nested "$config" "tailscale" "auth_key")
 
     # Load Claude work directory config
-    local cfg_claude_work_dir=$(json_get_nested "$config" "claude" "work_dir")
-    local cfg_claude_projects_dir=$(json_get_nested "$config" "claude" "projects_dir")
+    local cfg_claude_work_dir
+    local cfg_claude_projects_dir
+    cfg_claude_work_dir=$(json_get_nested "$config" "claude" "work_dir")
+    cfg_claude_projects_dir=$(json_get_nested "$config" "claude" "projects_dir")
 
     # Set global variables (hostname/public_url not set - unique per sprite)
     [ -n "$cfg_git_name" ] && GIT_USER_NAME="$cfg_git_name"
@@ -481,7 +486,8 @@ load_config() {
     [ -n "$cfg_claude_projects_dir" ] && export CLAUDE_PROJECTS_DIR="$cfg_claude_projects_dir"
 
     # Extract and install credentials
-    local claude_creds=$(json_get_nested "$config" "credentials" "claude")
+    local claude_creds
+    claude_creds=$(json_get_nested "$config" "credentials" "claude")
     if [ -n "$claude_creds" ]; then
         echo "  Installing Claude credentials..." >&2
         mkdir -p "$HOME/.claude"
@@ -489,7 +495,8 @@ load_config() {
         chmod 600 "$HOME/.claude/.credentials.json"
     fi
 
-    local claude_token=$(json_get_nested "$config" "credentials" "claude_token")
+    local claude_token
+    claude_token=$(json_get_nested "$config" "credentials" "claude_token")
     if [ -n "$claude_token" ]; then
         echo "  Installing Claude token..." >&2
         mkdir -p "$HOME/.config/claude-code"
@@ -503,7 +510,8 @@ load_config() {
         fi
     fi
 
-    local github_creds=$(json_get_nested "$config" "credentials" "github")
+    local github_creds
+    github_creds=$(json_get_nested "$config" "credentials" "github")
     if [ -n "$github_creds" ]; then
         echo "  Installing GitHub credentials..." >&2
         mkdir -p "$HOME/.config/gh"
@@ -511,14 +519,16 @@ load_config() {
         chmod 600 "$HOME/.config/gh/hosts.yml"
     fi
 
-    local flyctl_creds=$(json_get_nested "$config" "credentials" "flyctl")
+    local flyctl_creds
+    flyctl_creds=$(json_get_nested "$config" "credentials" "flyctl")
     if [ -n "$flyctl_creds" ]; then
         echo "  Installing flyctl credentials..." >&2
         mkdir -p "$HOME/.fly"
         echo "$flyctl_creds" | base64 -d | tar -xzf - -C "$HOME/.fly" 2>/dev/null || true
     fi
 
-    local sprite_network_creds=$(json_get_nested "$config" "credentials" "sprite_network")
+    local sprite_network_creds
+    sprite_network_creds=$(json_get_nested "$config" "credentials" "sprite_network")
     if [ -n "$sprite_network_creds" ]; then
         echo "  Installing sprite-network credentials..." >&2
         mkdir -p "$HOME/.sprite-network"

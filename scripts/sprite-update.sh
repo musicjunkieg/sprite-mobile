@@ -143,7 +143,7 @@ if [ ${#targets[@]} -eq 0 ]; then
 fi
 
 # Remove duplicates
-targets=($(printf '%s\n' "${targets[@]}" | sort -u))
+mapfile -t targets < <(printf '%s\n' "${targets[@]}" | sort -u)
 
 for target in "${targets[@]}"; do
     case "$target" in
