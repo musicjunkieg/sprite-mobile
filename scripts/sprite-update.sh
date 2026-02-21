@@ -49,22 +49,24 @@ update_sprite_mobile() {
 
     echo "=== Updating sprite-mobile ==="
 
-    if [ ! -d "$dir" ]; then
-        echo "Cloning sprite-mobile from $SPRITE_MOBILE_REPO..."
-        gh repo clone "$SPRITE_MOBILE_REPO" "$dir"
-    elif [ -d "$dir/.git" ]; then
-        echo "Pulling latest sprite-mobile..."
-        cd "$dir"
-        git pull
-    else
-        echo "Directory exists but is not a git repo, cloning fresh..."
-        rm -rf "$dir"
-        gh repo clone "$SPRITE_MOBILE_REPO" "$dir"
-    fi
+    (
+        if [ ! -d "$dir" ]; then
+            echo "Cloning sprite-mobile from $SPRITE_MOBILE_REPO..."
+            gh repo clone "$SPRITE_MOBILE_REPO" "$dir"
+        elif [ -d "$dir/.git" ]; then
+            echo "Pulling latest sprite-mobile..."
+            cd "$dir" || exit 1
+            git pull
+        else
+            echo "Directory exists but is not a git repo, cloning fresh..."
+            rm -rf "$dir"
+            gh repo clone "$SPRITE_MOBILE_REPO" "$dir"
+        fi
 
-    echo "Installing dependencies..."
-    cd "$dir"
-    bun install
+        echo "Installing dependencies..."
+        cd "$dir" || exit 1
+        bun install
+    )
 
     if [ "$pull_only" = "true" ]; then
         echo "sprite-mobile code updated (restart skipped)"
@@ -82,22 +84,24 @@ update_claude_hub() {
 
     echo "=== Updating claude-hub ==="
 
-    if [ ! -d "$dir" ]; then
-        echo "Cloning claude-hub from $CLAUDE_HUB_REPO..."
-        gh repo clone "$CLAUDE_HUB_REPO" "$dir"
-    elif [ -d "$dir/.git" ]; then
-        echo "Pulling latest claude-hub..."
-        cd "$dir"
-        git pull
-    else
-        echo "Directory exists but is not a git repo, cloning fresh..."
-        rm -rf "$dir"
-        gh repo clone "$CLAUDE_HUB_REPO" "$dir"
-    fi
+    (
+        if [ ! -d "$dir" ]; then
+            echo "Cloning claude-hub from $CLAUDE_HUB_REPO..."
+            gh repo clone "$CLAUDE_HUB_REPO" "$dir"
+        elif [ -d "$dir/.git" ]; then
+            echo "Pulling latest claude-hub..."
+            cd "$dir" || exit 1
+            git pull
+        else
+            echo "Directory exists but is not a git repo, cloning fresh..."
+            rm -rf "$dir"
+            gh repo clone "$CLAUDE_HUB_REPO" "$dir"
+        fi
 
-    echo "Building claude-hub..."
-    cd "$dir"
-    go build -o bin/claude-hub main.go
+        echo "Building claude-hub..."
+        cd "$dir" || exit 1
+        go build -o bin/claude-hub main.go
+    )
 
     if [ "$pull_only" = "true" ]; then
         echo "claude-hub code updated (restart skipped)"

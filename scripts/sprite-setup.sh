@@ -369,10 +369,10 @@ EOF
     [ -n "$SPRITE_API_TOKEN" ] && echo "SPRITE_API_TOKEN=$SPRITE_API_TOKEN" >> "$SPRITE_CONFIG_FILE"
 
     # Claude work directory configuration
-    if [ -n "$CLAUDE_WORK_DIR" ]; then
+    if [ -n "$CLAUDE_WORK_DIR" ] || [ -n "$CLAUDE_PROJECTS_DIR" ]; then
         echo "" >> "$SPRITE_CONFIG_FILE"
         echo "# Claude work directory" >> "$SPRITE_CONFIG_FILE"
-        echo "CLAUDE_WORK_DIR=$CLAUDE_WORK_DIR" >> "$SPRITE_CONFIG_FILE"
+        [ -n "$CLAUDE_WORK_DIR" ] && echo "CLAUDE_WORK_DIR=$CLAUDE_WORK_DIR" >> "$SPRITE_CONFIG_FILE"
         [ -n "$CLAUDE_PROJECTS_DIR" ] && echo "CLAUDE_PROJECTS_DIR=$CLAUDE_PROJECTS_DIR" >> "$SPRITE_CONFIG_FILE"
     fi
 
